@@ -4,7 +4,7 @@ LABEL org.opencontainers.image.title="Stratechna HR"
 LABEL org.opencontainers.image.vendor="Stratechna"
 LABEL org.opencontainers.image.source="https://github.com/stratechna/Stratechna-HR"
 
-# Dependencias de sistema
+# Dependencias de sistema (inclui gettext para compilar traduções)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     postgresql-client \
@@ -26,11 +26,14 @@ RUN git clone --depth=1 https://github.com/horilla-opensource/horilla.git .
 RUN pip install --no-cache-dir -r requirements.txt && \
     pip install --no-cache-dir gunicorn psycopg2-binary
 
-# Copiar assets de branding
-COPY branding/patch.py /tmp/patch.py
+# Copiar scripts de setup e branding
+COPY branding/setup.py /tmp/setup.py
 
-# Activar WHITE_LABEL
-RUN python3 /tmp/patch.py
+# Aplicar todas as configurações durante o build:
+# - WHITE_LABELLING = True
+# - LANGUAGE_CODE = 'pt-pt'
+# - Locale pt_PT criado e compilado
+RUN python3 /tmp/setup.py
 
 # Copiar entrypoint personalizado
 COPY entrypoint.sh /app/entrypoint.sh
