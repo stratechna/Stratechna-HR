@@ -1,0 +1,82 @@
+# Stratechna HR — Template por cliente
+# Variáveis substituídas pelo novo-cliente.sh:
+#   CLIENTE          — slug do cliente (ex: stratechna)
+#   HR_SECRET        — Django secret key (gerado pelo script)
+#   HR_DB_PASS       — password PostgreSQL (gerada pelo script)
+#   HR_INIT_PASS     — password de inicialização da BD (gerada pelo script)
+#   EXTRA_HOSTS_RULE — " || Host(`hr.dominio.pt`)" ou vazio
+
+services:
+
+  hr-CLIENTE-web:
+    image: ghcr.io/stratechna/stratechna-hr:latest
+    container_name: hr-CLIENTE-web
+    restart: unless-stopped
+    environment:
+      - DEBUG=False
+      - SECRET_KEY=HR_SECRET
+      - DB_ENGINE=django.db.backends.postgresql
+      - DB_NAME=hr_CLIENTE
+      - DB_USER=hr_CLIENTE
+      - DB_PASSWORD=HR_DB_PASS
+      - DB_HOST=hr-CLIENTE-db
+      - DB_PORT=5432
+      - DATABASE_URL=postgres://hr_CLIENTE:HR_DB_PASS@hr-CLIENTE-db:5432/hr_CLIENTE
+      - ALLOWED_HOSTS=hr.CLIENTE.stratechna.com,localhost
+      - CSRF_TRUSTED_ORIGINS=https://hr.CLIENTE.stratechna.com
+      - DB_INIT_PASSWORD=HR_INIT_PASS
+      - ADMIN_EMAIL=HR_ADMIN_EMAIL
+      - ADMIN_PASSWORD=HR_ADMIN_PASSWORD
+      - TIME_ZONE=Europe/Lisbon
+      - EMAIL_HOST=smtppro.zoho.eu
+      - EMAIL_PORT=465
+      - EMAIL_USE_SSL=True
+      - EMAIL_HOST_USER=info@stratechna.pt
+      - EMAIL_HOST_PASSWORD=Kj8mN2pX5vQ9
+      - DEFAULT_FROM_EMAIL=info@stratechna.pt
+    volumes:
+      - hr-CLIENTE-media:/app/media
+      - hr-CLIENTE-static:/app/staticfiles
+    depends_on:
+      hr-CLIENTE-db:
+        condition: service_healthy
+    networks:
+      - proxy
+      - hr-CLIENTE-internal
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=proxy"
+      - "traefik.http.routers.hr-CLIENTE.rule=Host(`hr.CLIENTE.stratechna.com`)EXTRA_HOSTS_RULE"
+      - "traefik.http.routers.hr-CLIENTE.entrypoints=websecure"
+      - "traefik.http.routers.hr-CLIENTE.tls.certresolver=letsencrypt"
+      - "traefik.http.services.hr-CLIENTE.loadbalancer.server.port=8000"
+
+  hr-CLIENTE-db:
+    image: postgres:16-alpine
+    container_name: hr-CLIENTE-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=hr_CLIENTE
+      - POSTGRES_USER=hr_CLIENTE
+      - POSTGRES_PASSWORD=HR_DB_PASS
+    volumes:
+      - hr-CLIENTE-db:/var/lib/postgresql/data
+    networks:
+      - hr-CLIENTE-internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hr_CLIENTE -d hr_CLIENTE"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+volumes:
+  hr-CLIENTE-media:
+  hr-CLIENTE-static:
+  hr-CLIENTE-db:
+
+networks:
+  proxy:
+    external: true
+  hr-CLIENTE-internal:
+    name: hr-CLIENTE-internal
