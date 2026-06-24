@@ -1,24 +1,41 @@
-FROM horilla/horilla:latest
+FROM python:3.12-slim
 
 LABEL org.opencontainers.image.title="Stratechna HR"
 LABEL org.opencontainers.image.vendor="Stratechna"
 LABEL org.opencontainers.image.source="https://github.com/stratechna/Stratechna-HR"
 
-# Aplicar branding como root
-USER root
+# Dependencias de sistema
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    postgresql-client \
+    libpq-dev \
+    gcc \
+    g++ \
+    libcairo2-dev \
+    pkg-config \
+    gettext \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Clonar Horilla
+RUN git clone --depth=1 https://github.com/horilla-opensource/horilla.git .
+
+# Instalar dependencias Python
+RUN pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir gunicorn psycopg2-binary
 
 # Copiar assets de branding
-COPY branding/logo.png /app/static/images/logo.png
-COPY branding/favicon.png /app/static/favicons/favicon-32x32.png
-COPY branding/favicon.png /app/static/favicons/favicon-16x16.png
-COPY branding/favicon.png /app/static/favicons/apple-touch-icon.png
-
-# Activar white label e configurar branding via patch ao horilla_apps.py
 COPY branding/patch.py /tmp/patch.py
+
+# Activar WHITE_LABEL
 RUN python3 /tmp/patch.py
 
 # Copiar entrypoint personalizado
 COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
-USER horilla
+EXPOSE 8000
+
+ENTRYPOINT ["/app/entrypoint.sh"]
